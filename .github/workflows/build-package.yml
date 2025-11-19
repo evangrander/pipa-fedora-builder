@@ -4,12 +4,12 @@ permissions:
   contents: write
 
 on:
-  # AUTOMATIC: Triggers every 1st day of the month at midnight UTC
+  # Runs once a month for a fresh build
   schedule:
     - cron: "0 0 1 * *"
-  # MANUAL: Allows triggering with a single click from the GitHub UI
+  # Allows manual triggering with a single click from the GitHub UI
   workflow_dispatch:
-  # Runs when changes are pushed to main (except for documentation/metadata)
+  # Runs when changes are pushed to main
   push:
     branches:
       - 'main'
@@ -20,7 +20,7 @@ on:
 
 jobs:
   build:
-    # Target the self-hosted ARM runner (e.g., your Raspberry Pi or other build server)
+    # Target the self-hosted ARM runner
     runs-on: ubuntu-24.04-arm
 
     steps:
@@ -30,11 +30,12 @@ jobs:
       run: docker build . -t 'pipa-fedora-builder'
 
     - name: Build Fedora 43 (KDE Plasma) Image
-      # HARDCODED: Set variables for the latest stable version and desired desktop
+      # CRITICAL: Adding DNF_OPTS to skip broken pipewire plugin
       run: |
         docker run --privileged \
           -e FEDORA_VERSION="43" \
           -e DESKTOP_ENV="kde" \
+          -e DNF_OPTS="--skip-broken --nobest" \
           -v "$(pwd)"/images:/build/images \
           -v "/dev:/dev" \
           pipa-fedora-builder
@@ -48,7 +49,6 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        # Final tag for easy identification (F43 is the current stable version)
         tag_name: fedora-43-kde-${{ steps.date_hash.outputs.date }}-${{ steps.date_hash.outputs.hash }}
         name: Fedora 43 (KDE Plasma) Build - ${{ steps.date_hash.outputs.date }}
         files: images/*.zip
